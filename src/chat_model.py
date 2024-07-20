@@ -1,14 +1,13 @@
 # chat_model.py
 
 from typing import List, Iterable
-
 from sparkai.llm.llm import ChatSparkLLM
 from sparkai.core.messages import ChatMessage
 from dwspark.config import Config
 from loguru import logger
 
-class ChatModel():
-    def __init__(self, config: Config, domain: str = 'generalv3.5', model_url: str = 'wss://spark-api.xf-yun.com/v3.5/chat', stream:bool=False):
+class ChatModel:
+    def __init__(self, config: Config, domain: str = 'generalv3.5', model_url: str = 'wss://spark-api.xf-yun.com/v3.5/chat', stream: bool = False):
         '''
         初始化模型
         :param config: 项目配置文件
@@ -32,7 +31,7 @@ class ChatModel():
         :param msgs: 发送消息，接收字符串或列表形式的消息
         :return:
         '''
-        if self.stream is True:
+        if self.stream:
             raise Exception('模型初始化为流式输出，请调用generate_stream方法')
 
         messages = self.__trans_msgs(msgs)
@@ -45,12 +44,11 @@ class ChatModel():
         :param msgs: 发送消息，接收字符串或列表形式的消息
         :return:
         '''
-        if self.stream is False:
-            raise Exception('模型初始化为流式输出，请调用generate方法')
+        if not self.stream:
+            raise Exception('模型初始化为批式输出，请调用generate方法')
         messages = self.__trans_msgs(msgs)
         resp_iterable = self.spark.stream(messages)
         for resp in resp_iterable:
-
             yield resp.content
 
     def __trans_msgs(self, msg: str):
