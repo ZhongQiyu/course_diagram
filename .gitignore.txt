@@ -1,0 +1,13 @@
+# Ignore macOS system files
+.DS_Store
+
+# Ignore src.zip and its metadata file
+src.zip
+._src.zip
+
+# Ignore data and src directories
+data/
+src/
+
+# Ignore vim swap files
+.*.swp
