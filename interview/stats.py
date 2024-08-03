@@ -1,99 +1,117 @@
 # stats.py
 
-import sqlite3
+import pymysql
+from datetime import datetime
+from collections import defaultdict
 
-class DataProcessor:
-    def __init__(self, data_list):
-        """初始化数据处理器，接收一个数据列表，并清理数据"""
-        self.data_list = self.clean_data(data_list)  # 清理并标准化数据
-        self.value_counts = {}
-        self.unique_values = []
-        self.duplicate_values = []
+class ProblemManager:
+    def __init__(self, db_config):
+        self.db_config = db_config
+        self.cache = defaultdict(dict)
+        self.conn = self.connect_db()
+        self.create_table()
 
-    def clean_data(self, data_list):
-        """对数据列表进行清理，去重、去除空格和统一小写"""
-        return list(set([str(value).strip().lower() for value in data_list]))
+    def connect_db(self):
+        """Connect to the MySQL database using PyMySQL."""
+        conn = pymysql.connect(**self.db_config)
+        return conn
 
-    def process_data(self):
-        """处理数据，统计不重复值和重复值"""
-        for value in self.data_list:
-            if value in self.value_counts:
-                self.value_counts[value] += 1
-            else:
-                self.value_counts[value] = 1
-        
-        self.unique_values = [value for value, count in self.value_counts.items() if count == 1]
-        self.duplicate_values = [value for value, count in self.value_counts.items() if count > 1]
-
-    def get_num_elements(self):
-        """返回数据列表中的总元素数量"""
-        return len(self.data_list)
-
-    def get_unique_values(self):
-        """返回所有不重复的值"""
-        return self.unique_values
-
-    def get_duplicate_values(self):
-        """返回所有重复的值"""
-        return self.duplicate_values
-
-    def calculate_difference(self, other_list):
-        """使用SQL计算当前数据列表中不在另一个列表中的元素"""
-        other_clean = self.clean_data(other_list)  # 清理和标准化其他列表的数据
-        
-        # 创建SQLite数据库和连接
-        conn = sqlite3.connect(':memory:')  # 使用内存数据库
-        cursor = conn.cursor()
-
-        # 创建表并插入数据
-        cursor.execute("CREATE TABLE current_data (value TEXT)")
-        cursor.executemany("INSERT INTO current_data (value) VALUES (?)", [(v,) for v in self.data_list])
-
-        cursor.execute("CREATE TABLE other_data (value TEXT)")
-        cursor.executemany("INSERT INTO other_data (value) VALUES (?)", [(v,) for v in other_clean])
-
-        # 查询 current_data 中不在 other_data 中的差集
+    def create_table(self):
+        """Create the problems table if it does not exist."""
+        cursor = self.conn.cursor()
         cursor.execute("""
-        SELECT value FROM current_data
-        WHERE value NOT IN (SELECT value FROM other_data)
+            CREATE TABLE IF NOT EXISTS problems (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                problem_number VARCHAR(255) NOT NULL,
+                description TEXT,
+                example TEXT,
+                solved_date DATE
+            )
         """)
-        difference = cursor.fetchall()
+        self.conn.commit()
+        cursor.close()  # 关闭游标
 
-        # 关闭连接
-        conn.close()
-
-        return [row[0] for row in difference]
-
-    def calculate_reverse_difference(self, other_list):
-        """使用SQL计算另一个列表中不在当前数据列表中的元素"""
-        other_clean = self.clean_data(other_list)
+    def import_data(self, data):
+        """Import a list of problem data into the database."""
+        cursor = self.conn.cursor()
         
-        # 创建SQLite数据库和连接
-        conn = sqlite3.connect(':memory:')  # 使用内存数据库
-        cursor = conn.cursor()
+        # 先清空表
+        cursor.execute("DELETE FROM problems")
+        
+        for entry in data:
+            problem_number, description, example, solved_date = entry
+            cursor.execute("""
+                INSERT INTO problems (problem_number, description, example, solved_date)
+                VALUES (%s, %s, %s, %s)
+            """, (problem_number, description, example, solved_date))
+        self.conn.commit()
 
-        # 创建表并插入数据
-        cursor.execute("CREATE TABLE current_data (value TEXT)")
-        cursor.executemany("INSERT INTO current_data (value) VALUES (?)", [(v,) for v in self.data_list])
+    def export_data(self):
+        """Export all problem data from the database."""
+        cursor = self.conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM problems")
+        result = cursor.fetchall()
+        cursor.close()  # 关闭游标
+        return result
 
-        cursor.execute("CREATE TABLE other_data (value TEXT)")
-        cursor.executemany("INSERT INTO other_data (value) VALUES (?)", [(v,) for v in other_clean])
+    def count_elements(self):
+        """Count the total number of elements in the database."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM problems")
+        total_count = cursor.fetchone()[0]
+        cursor.close()  # 关闭游标
+        return total_count
 
-        # 查询 other_data 中不在 current_data 中的差集
+    def count_unique_and_duplicates(self):
+        """Count the number of unique and duplicate problem numbers."""
+        cursor = self.conn.cursor()
         cursor.execute("""
-        SELECT value FROM other_data
-        WHERE value NOT IN (SELECT value FROM current_data)
+            SELECT problem_number, COUNT(*)
+            FROM problems
+            GROUP BY problem_number
+            HAVING COUNT(*) > 1
         """)
-        reverse_difference = cursor.fetchall()
+        duplicates = cursor.fetchall()
+        cursor.close()  # 关闭游标
+        unique_count = self.count_elements() - len(duplicates)
+        return unique_count, len(duplicates)
 
-        # 关闭连接
-        conn.close()
+    def query_problem(self, problem_number):
+        """Query problem details by problem number."""
+        if problem_number in self.cache:
+            return self.cache[problem_number]
 
-        return [row[0] for row in reverse_difference]
+        cursor = self.conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM problems WHERE problem_number = %s", (problem_number,))
+        result = cursor.fetchone()
+        cursor.close()  # 关闭游标
 
-# 测试使用 DataProcessor 类
+        if result:
+            self.cache[problem_number] = result
+        return result
 
-# 你的数据列表
+    def cache_data(self, problem_number):
+        """Cache problem data for quick access."""
+        problem_data = self.query_problem(problem_number)
+        if problem_data:
+            self.cache[problem_number] = problem_data
+
+    def query_cache(self, problem_number):
+        """Query data directly from the cache."""
+        return self.cache.get(problem_number, "Problem not found in cache")
+
+    def calculate_difference(self, solved_set, completed_set):
+        """Calculate the difference between solved and completed sets."""
+        difference_solved_completed = solved_set - completed_set
+        difference_completed_solved = completed_set - solved_set
+        return difference_solved_completed, difference_completed_solved
+
+    def close_connection(self):
+        """Close the database connection."""
+        if self.conn.open:  # pymysql用 open 代替 is_connected
+            self.conn.close()
+
+# 示例数据
 solved = [
     "2", "面01.02", "58", "9", "1108", "LCR 182", "1486", "771", "1431", "832",
     "LCP 06", "1450", "1757", "1313", "2114", "1480", "1725", "14", "LCP 01", "2006",
@@ -135,32 +153,52 @@ completed = [
     "3065", "3033", "2620", "3232", "27", "1732", "2220", "1476", "2194", "2882"
 ]
 
-# 创建 DataProcessor 对象
-processor_solved = DataProcessor(solved)
-processor_completed = DataProcessor(completed)
+# 将 solved 和 completed 数据打包成带有描述、示例和日期的元组列表
+solved_data = [(problem, "Solved description", "Solved example", datetime.now().date()) for problem in solved]
+completed_data = [(problem, "Completed description", "Completed example", datetime.now().date()) for problem in completed]
 
-# 处理数据
-processor_solved.process_data()
-processor_completed.process_data()
+# 创建 ProblemManager 实例
+db_config = {
+    'user': 'root',
+    'password': 'Zqy19991214!',
+    'host': 'localhost',
+    'database': 'mysql',
+    'charset': 'utf8mb4'
+}
 
-# 获取并打印 solved 列表的结果
-print("solved 列表的结果：")
-print(f"总元素数量: {processor_solved.get_num_elements()}")
-print(f"不重复值的数量: {len(processor_solved.get_unique_values())}")
-print(f"不重复值: {processor_solved.get_unique_values()}")
-print(f"重复的元素: {processor_solved.get_duplicate_values()}")
+manager = ProblemManager(db_config)
 
-# 获取并打印 completed 列表的结果
-print("\ncompleted 列表的结果：")
-print(f"总元素数量: {processor_completed.get_num_elements()}")
-print(f"不重复值的数量: {len(processor_completed.get_unique_values())}")
-print(f"不重复值: {processor_completed.get_unique_values()}")
-print(f"重复的元素: {processor_completed.get_duplicate_values()}")
+# 导入数据
+manager.import_data(solved_data)
+manager.import_data(completed_data)
 
-# 获取并打印差集
-solved_not_in_completed = processor_solved.calculate_difference(completed)
-print(f"\nsolved 中不在 completed 中的元素: {solved_not_in_completed} (数量: {len(solved_not_in_completed)})")
+# 计算元素总数
+total_count = manager.count_elements()
+print("Total Elements:", total_count)
 
-# 获取并打印反向差集
-completed_not_in_solved = processor_completed.calculate_reverse_difference(solved)
-print(f"completed 中不在 solved 中的元素: {completed_not_in_solved} (数量: {len(completed_not_in_solved)})")
+# 计算唯一值和重复值
+unique_count, duplicates_count = manager.count_unique_and_duplicates()
+print(f"Unique: {unique_count}, Duplicates: {duplicates_count}")
+
+# 计算差集
+solved_set = set(solved)
+completed_set = set(completed)
+diff_solved_completed, diff_completed_solved = manager.calculate_difference(solved_set, completed_set)
+print(f"Difference (Solved - Completed): {diff_solved_completed}")
+print(f"Difference (Completed - Solved): {diff_completed_solved}")
+
+# 导出数据
+exported_data = manager.export_data()
+# print("Exported Data:", exported_data)
+
+# 查询特定问题
+problem = manager.query_problem("2")
+print("Queried Problem:", problem)
+
+# 缓存和查询缓存
+manager.cache_data("2")
+cached_problem = manager.query_cache("2")
+print("Cached Problem:", cached_problem)
+
+# 关闭连接
+manager.close_connection()
