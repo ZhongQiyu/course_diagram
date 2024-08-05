@@ -1,3 +1,0 @@
--- reset users
--- prepare user and tables for tests
--- ensure the statements not break with PUBLIC role

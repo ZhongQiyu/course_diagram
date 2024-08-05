@@ -1,5 +1,0 @@
-multipart <-
-function (...) 
-{
-   UseMethod("multipart")
-}

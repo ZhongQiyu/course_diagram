@@ -1,1 +1,0 @@
-place your pretrained deit checkpoints here
