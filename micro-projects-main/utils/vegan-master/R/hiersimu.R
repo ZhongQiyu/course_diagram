@@ -1,5 +1,0 @@
-hiersimu <-
-function (...) 
-{
-   UseMethod("hiersimu")
-}

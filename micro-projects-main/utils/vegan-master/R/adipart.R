@@ -1,6 +1,0 @@
-adipart <-
-function (...) 
-{
-   UseMethod("adipart")
-}
-
