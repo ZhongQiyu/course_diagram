@@ -1,0 +1,47 @@
+[
+    {
+        "query": "Two Sum",
+        "top_k": 3,
+        "temperature": 0.9,
+        "batch_size": 10,
+        "search_depth": 4,
+        "model_version": "v1",
+        "results": [
+            {
+                "problem_title": "Two Sum",
+                "problem_url": "https://leetcode.com/problems/two-sum",
+                "solution_text": "To solve the Two Sum problem, you can use a hash map to store the numbers and their indices..."
+            },
+            {
+                "problem_title": "Two Sum",
+                "problem_url": "https://leetcode.com/problems/two-sum",
+                "solution_text": "Another approach to solve Two Sum is by using two pointers technique..."
+            },
+            {
+                "problem_title": "Two Sum",
+                "problem_url": "https://leetcode.com/problems/two-sum",
+                "solution_text": "A brute force solution would involve checking every pair of numbers, but this is inefficient..."
+            }
+        ]
+    },
+    {
+        "query": "Median of Two Sorted Arrays",
+        "top_k": 5,
+        "temperature": 0.7,
+        "batch_size": 15,
+        "search_depth": 3,
+        "model_version": "v2",
+        "results": [
+            {
+                "problem_title": "Median of Two Sorted Arrays",
+                "problem_url": "https://leetcode.com/problems/median-of-two-sorted-arrays",
+                "solution_text": "To solve the median problem, you can merge the two arrays and then find the middle element..."
+            },
+            {
+                "problem_title": "Median of Two Sorted Arrays",
+                "problem_url": "https://leetcode.com/problems/median-of-two-sorted-arrays",
+                "solution_text": "Another approach is using binary search to partition the arrays..."
+            }
+        ]
+    }
+]

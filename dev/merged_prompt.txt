@@ -1,0 +1,10 @@
+
+（一）BERT
+- 路径优化：
+  - 从file_path取和存BERT标记好的文件，保证这些文件名不和原BERT处理的文件名重名
+  - 这些文件存储到../data/ft_data/labelled路径下，合拢为"all_labelled.txt"，存同个文件夹
+  - 合拢中，请你根据每个数据集的抽取贴吧名字...
+
+（二）FastText
+- FastText有监督训练及自迭代：
+- 确保BERT标记完成的数据能被fasttext识别...

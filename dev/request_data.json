@@ -1,0 +1,18 @@
+[
+    {
+        "query": "Two Sum",
+        "top_k": 3,
+        "temperature": 0.9,
+        "batch_size": 10,
+        "search_depth": 4,
+        "model_version": "v1"
+    },
+    {
+        "query": "Median of Two Sorted Arrays",
+        "top_k": 5,
+        "temperature": 0.7,
+        "batch_size": 15,
+        "search_depth": 3,
+        "model_version": "v2"
+    }
+]
